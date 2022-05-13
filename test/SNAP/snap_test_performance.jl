@@ -1,3 +1,8 @@
+using Profile
+#using FileIO
+#using ProfileSVG
+#using ProfileView
+using BenchmarkTools
 using AtomsBase
 using InteratomicPotentials
 using InteratomicBasisPotentials
@@ -5,11 +10,13 @@ using StaticArrays
 using Unitful
 using UnitfulAtomic
 using LinearAlgebra
-
+using LoopVectorization
+using Base.Threads
+using Distributed
 
 ## Settings
 num_elements = 1
-num_atoms = 100
+num_atoms = 1000
 twojmax = 6
 rcutfac = 1.2
 radii = [4.0]
@@ -19,9 +26,7 @@ weight = [1.0]
 chem_flag = false
 bzero_flag = false
 bnorm_flag = false
-snap = SNAPParams(num_atoms, twojmax, [:Ar], rcutfac, 0.00, rcut0, radii, weight, chem_flag, bzero_flag, bnorm_flag)
-
-num_coeffs = length(snap)
+num_coeffs = get_num_snap_coeffs(twojmax, num_elements, chem_flag)
 
 print_flag = false
 
@@ -66,5 +71,16 @@ bcs = [DirichletZero(), DirichletZero(), DirichletZero()]
 ## This is the julia form of the configuration
 system = FlexibleSystem(atoms, box, bcs)
 
+# Initialize SNAP
+snap = SNAPParams(num_atoms, twojmax, [:Ar], rcutfac, 0.00, rcut0, radii, weight, chem_flag, bzero_flag, bnorm_flag)
+
+Profile.clear()
+
 # Compute SNAP descriptors
-@timed B = evaluate_basis(system, snap)
+B = @profview evaluate_basis(system, snap)
+
+#ProfileSVG.view()
+#ProfileSVG.save("prof.svg")
+
+#profdata, lidict = Profile.retrieve()
+#save("test.jlprof",  Profile.retrieve()...)
